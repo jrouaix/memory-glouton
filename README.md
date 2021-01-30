@@ -161,3 +161,21 @@ valgrind --leak-check=yes --log-file="valgrind.log" ./target/debug/glouton
 ```
 
 
+
+
+
+### try harder
+
+```sh
+cargo build
+valgrind --leak-check=yes --leak-resolution=high --track-origins=yes --show-reachable=yes --log-file="valgrind.log" ./target/debug/glouton
+```
+
+```sh
+cargo build
+heaptrack ./target/debug/glouton
+```
+
+![heaptrack-consumed-over-10s](screen_captures/heaptrack-consumed-over-10s.png)
+
+![heaptrack-flame-leaked.png](screen_captures/heaptrack-flame-leaked.png)

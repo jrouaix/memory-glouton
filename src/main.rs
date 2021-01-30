@@ -7,7 +7,7 @@ fn main() {
     Bastion::start();
 
     let start_time = std::time::SystemTime::now();
-    let expected_duration = Duration::from_secs(2);
+    let expected_duration = Duration::from_secs(10);
 
     loop {
         let workers = Bastion::children(|children| {
