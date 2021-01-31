@@ -1,37 +1,41 @@
 use std::time::Duration;
 
+use anyhow::{anyhow, Result as AnyResult};
 use bastion::prelude::*;
+use log::{error, warn};
 
-fn main() {
+static RUN_FOR: Duration = Duration::from_secs(60);
+static CHILD_LIFE: Duration = Duration::from_millis(200);
+
+// RUST_LOG=warn cargo run
+fn main() -> AnyResult<()> {
+    println!(
+        "make sure you run this program with `RUST_LOG=warn` so you can get the wake up messages"
+    );
+    env_logger::init();
     Bastion::init();
     Bastion::start();
 
-    let start_time = std::time::SystemTime::now();
-    let expected_duration = Duration::from_secs(10);
-
-    loop {
-        let workers = Bastion::children(|children| {
-            children.with_exec(|ctx: BastionContext| {
-                async move {
-                    msg! {
-                        ctx.recv().await?,
-                        _: _ => (); // nothing
-                    }
-                    Ok(())
-                }
+    Bastion::supervisor(|sp| {
+        sp.with_strategy(SupervisionStrategy::OneForOne)
+            .children(|children| {
+                children.with_exec(|_ctx: BastionContext| async move {
+                    warn!("hey I just woke up");
+                    std::thread::sleep(CHILD_LIFE);
+                    error!("Ok I'm outta here");
+                    // We want to exit with an error so the supervisor respawns us
+                    Err(())
+                })
             })
-        })
-        .expect("Couldn't create the children group.");
+    })
+    .map_err(|_| anyhow!("woops"))?;
 
-        workers.stop().expect("Couldn't stop the children group");
-        workers.kill().expect("Couldn't kill the children group");
+    let task = blocking! {
+        std::thread::sleep(RUN_FOR);
+    };
+    run!(task);
 
-        let now = std::time::SystemTime::now();
-        let duration = now.duration_since(start_time).unwrap();
-        if duration > expected_duration {
-            break;
-        }
-    }
     // We are stopping bastion here
     Bastion::stop();
+    Ok(())
 }
